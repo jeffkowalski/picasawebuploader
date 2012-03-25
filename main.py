@@ -289,7 +289,10 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
   return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
 def syncDirs(gd_client, dirs, local, web):
+  i = 0
   for dir in dirs:
+    i = i + 1
+    print "syncDirs: {} of {}".format( i, len(dirs) )
     syncDir(gd_client, dir, local[dir], web[dir])
 
 def syncDir(gd_client, dir, localAlbum, webAlbum):
@@ -308,7 +311,10 @@ def syncDir(gd_client, dir, localAlbum, webAlbum):
     upload(gd_client, localPath, webAlbum, f)
 
 def uploadDirs(gd_client, dirs, local):
+  i = 0
   for dir in dirs:
+    i = i + 1
+    print "uploadDirs: {} of {}".format( i, len(dirs) )
     uploadDir(gd_client, dir, local[dir])
 
 def uploadDir(gd_client, dir, localAlbum):
