@@ -316,7 +316,7 @@ def uploadDirs(gd_client, dirs, local, no_resize):
     uploadDir(gd_client, dir, local[dir], no_resize)
 
 def uploadDir(gd_client, dir, localAlbum, no_resize):
-  webAlbum = findOrCreateAlbum(gd_client, dir)
+  webAlbum = findOrCreateAlbum(gd_client, dir or "Default")
   for f in localAlbum['files']:
     localPath = os.path.join(localAlbum['path'], f)
     upload(gd_client, localPath, webAlbum, f, no_resize)
@@ -333,19 +333,17 @@ def getTempPath(localPath):
   return tempPath
 
 def imageMaxDimension(path):
-  output = subprocess.check_output(['sips', '-g', 'pixelWidth', '-g', 'pixelHeight',
-    path])
-  lines = output.split('\n')
-  w = int(lines[1].split()[1])
-  h = int(lines[2].split()[1])
+  output = subprocess.check_output(['identify', '-format', '%w %h', path])
+  lines = output.strip().split()
+  w = int(lines[0])
+  h = int(lines[1])
   return max(w,h)
 
 def shrinkIfNeeded(path, maxDimension):
   if imageMaxDimension(path) > maxDimension:
     print "Shrinking " + path
     imagePath = getTempPath(path)
-    subprocess.check_call(['sips', '--resampleHeightWidthMax', str(maxDimension), path,
-      '--out', imagePath])
+    subprocess.check_call(['gm', 'convert', '-resize', '%sX%s' % (maxDimension, maxDimension), path, imagePath])
     return imagePath
   return path
 
