@@ -294,9 +294,16 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
 
 def syncDirs(gd_client, dirs, local, web, no_resize):
   for dir in dirs:
-    syncDir(gd_client, dir, local[dir], web[dir], no_resize)
+    alen = len(local[dir]['files'])
+    if alen>1000:
+      for i in range(0, alen, 1000):
+        wdir = "%s%s"%(dir,i) if i else dir
+        wdir = web.get(wdir, findOrCreateAlbum(gd_client, wdir))
+        syncDir(gd_client, local[dir]['files'][i:i+1000], local[dir]['path'], wdir, no_resize)
+    else:
+      syncDir(gd_client, local[dir]['files'], local[dir]['path'], web[dir], no_resize)
 
-def syncDir(gd_client, dir, localAlbum, webAlbum, no_resize):
+def syncDir(gd_client, afiles, apath, webAlbum, no_resize):
   webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
   webPhotoDict = {}
   for photo in webPhotos:
@@ -305,20 +312,25 @@ def syncDir(gd_client, dir, localAlbum, webAlbum, no_resize):
       print "duplicate web photo: " + webAlbum.title.text + " " + title
     else:
       webPhotoDict[title] = photo
-  report = compareLocalToWebDir(localAlbum['files'], webPhotoDict)
+  report = compareLocalToWebDir(afiles, webPhotoDict)
   localOnly = report['localOnly']
   for f in localOnly:
-    localPath = os.path.join(localAlbum['path'], f)
+    localPath = os.path.join(apath, f)
     upload(gd_client, localPath, webAlbum, f, no_resize)
 
 def uploadDirs(gd_client, dirs, local, no_resize):
   for dir in dirs:
-    uploadDir(gd_client, dir, local[dir], no_resize)
+    alen = len(local[dir]['files'])
+    if alen>1000:
+      for i in range(0, alen, 1000):
+        uploadDir(gd_client, "%s%s"%(dir,i) if i else dir, local[dir]['files'][i:i+1000], local[dir]['path'], no_resize)
+    else:
+      uploadDir(gd_client, dir, local[dir]['files'], local[dir]['path'], no_resize)
 
-def uploadDir(gd_client, dir, localAlbum, no_resize):
+def uploadDir(gd_client, dir, afiles, apath, no_resize):
   webAlbum = findOrCreateAlbum(gd_client, dir or "Default")
-  for f in localAlbum['files']:
-    localPath = os.path.join(localAlbum['path'], f)
+  for f in afiles:
+    localPath = os.path.join(apath, f)
     upload(gd_client, localPath, webAlbum, f, no_resize)
 
 # Global used for a temp directory
@@ -333,7 +345,7 @@ def getTempPath(localPath):
   return tempPath
 
 def imageMaxDimension(path):
-  output = subprocess.check_output(['identify', '-format', '%w %h', path])
+  output = subprocess.check_output(['gm', 'identify', '-format', '%w %h', path])
   lines = output.strip().split()
   w = int(lines[0])
   h = int(lines[1])
