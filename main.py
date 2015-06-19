@@ -118,12 +118,13 @@ def OAuth2Login(client_secrets, credential_store, email):
         webbrowser.open(uri)
         code = raw_input('Enter the authentication code: ').strip()
         credentials = flow.step2_exchange(code)
-        storage.put(credentials)
 
     if (credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5):
         http = httplib2.Http()
         http = credentials.authorize(http)
         credentials.refresh(http)
+
+    storage.put(credentials)
 
     gd_client = gdata.photos.service.PhotosService(source=user_agent,
                                                    email=email,
