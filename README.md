@@ -1,12 +1,16 @@
-A script that uploads photos to Picasa Web Albums
+picasawebuploader
+=================
+
+A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 
 + Resizes large images to be less than the free limit (2048 x 2048)
 + Uploads all directories under a given directory
 + restartable
-+ Creates the albums as "private" aka "limited"
++ Creates the albums as "protected"
 + Automatically retries when Google data service errors out.
 
-To Do:
+To Do
+-----
 
 + Use multiple threads for uploading.
 + Add Progress UI
@@ -15,16 +19,32 @@ To Do:
 + Deal with 'Error: 17 REJECTED_USER_LIMIT' errors.
 
 Installation
+------------
 
-+ Prerequesites:
++ Prerequisites:
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
-    + gdata-2.0.16for Python
-  + The BSD "sips" image processing program.
-     + This comes pre-installed on OSX.
+    + gdata-2.0.16 for Python
+  + The PIL library for Python or BSD "sips" image processing program.
+	+ PIL is available on most UNIX like systems.
+    + "sips" comes pre-installed on OSX.
+  + pyexiv2 module for writing correct EXIF data
+
+Authentication
+--------------
+
+You need to use OAuth2 for authentication. Here is how to set it up:
+
+1. First create a project through the Google Developer Console: at https://console.developers.google.com/
+2. Under that project, create a new Client ID of type "Installed Application" under APIs & auth -> Credentials
+3. Once the Client ID has been created you should click "Download JSON" and save the file as $HOME/.config/picasawebuploader/client_secrets.json (you can change the location in main.py)
+
+The first time you run the application you will be asked to authorize your application through your web browser. Once you do this you will get a code which you have to copy and paste into the application.
+
+You're done.
 
 Known Problems
-==============
+--------------
 
 Picasa Web Albums appears to have an undocumented upload quota system that
 limits uploads to a certain number of bytes per month.
