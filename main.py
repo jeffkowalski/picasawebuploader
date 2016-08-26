@@ -143,7 +143,7 @@ def protectWebAlbums(gd_client):
             needUpdate = True
         # print album
         if needUpdate:
-            print "updating " + album.title.text
+            print "Updating " + album.title.text
             try:
                 updated_album = gd_client.Put(album, album.GetEditLink().href,
                         converter=gdata.photos.AlbumEntryFromString)
@@ -171,36 +171,27 @@ def findAlbum(gd_client, title):
             return album
     return None
 
-def createAlbum(gd_client, title):
+def createAlbum(gd_client, title, dry_run):
     print "Creating album " + title
     # public, private, protected. private == "anyone with link"
+    if dry_run:
+        return None
     album = gd_client.InsertAlbum(title=title, summary='', access='protected')
     return album
 
-def findOrCreateAlbum(gd_client, title):
+def findOrCreateAlbum(gd_client, title, dry_run):
     delay = 1
     while True:
         try:
             album = findAlbum(gd_client, title)
             if not album:
-                album = createAlbum(gd_client, title)
+                album = createAlbum(gd_client, title, dry_run)
             return album
         except gdata.photos.service.GooglePhotosException, e:
-            print "caught exception " + str(e)
+            print "Caught exception " + str(e)
             print "sleeping for " + str(delay) + " seconds"
             time.sleep(delay)
             delay = delay * 2
-
-def postPhoto(gd_client, album, filename):
-    album_url = '/data/feed/api/user/%s/albumid/%s' % (gd_client.email, album.gphoto_id.text)
-    photo = gd_client.InsertPhotoSimple(album_url, 'New Photo',
-            'Uploaded using the API', filename, content_type='image/jpeg')
-    return photo
-
-def postPhotoToAlbum(gd_client, photo, album):
-    album = findOrCreateAlbum(gd_client, args.album)
-    photo = postPhoto(gd_client, album, args.source)
-    return photo
 
 def getWebPhotosForAlbum(gd_client, album):
     photos = gd_client.GetFeed(
@@ -261,7 +252,7 @@ def findDupDirs(photos):
     for i in photos:
         base = os.path.basename(i)
         if base in d:
-            print "duplicate " + base + ":\n" + i + ":\n" + d[base]
+            print "Duplicate " + base + ":\n" + i + ":\n" + d[base]
             dc = filecmp.dircmp(i, d[base])
             print dc.diff_files
         d[base] = i
@@ -272,8 +263,8 @@ def toBaseName(photos):
     for i in photos:
         base = os.path.basename(i)
         if base in d:
-            print "duplicate " + base + ":\n" + i + ":\n" + d[base]['path']
-            raise Exception("duplicate base")
+            print "Duplicate " + base + ":\n" + i + ":\n" + d[base]['path']
+#            raise Exception("duplicate base")
         p = photos[i]
         p['path'] = i
         d[base] = p
@@ -307,47 +298,52 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
             webOnly.append(i)
     return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
-def syncDirs(gd_client, dirs, local, web, no_resize):
+def syncDirs(gd_client, dirs, local, web, no_resize, dry_run):
+  ii = 0
   for dir in dirs:
-    print dir
+    ii = ii + 1
+    print "Syncing: {} of {} {}".format( ii, len(dirs), dir )
     alen = len(local[dir]['files'])
     if alen>1000:
       for i in range(0, alen, 1000):
         wdir = "%s%s"%(dir,i) if i else dir
-        wdir = web.get(wdir, findOrCreateAlbum(gd_client, wdir))
-        syncDir(gd_client, local[dir]['files'][i:i+1000], local[dir]['path'], wdir, no_resize)
+        wdir = web.get(wdir, findOrCreateAlbum(gd_client, wdir, dry_run))
+        syncDir(gd_client, local[dir]['files'][i:i+1000], local[dir]['path'], wdir, no_resize, dry_run)
     else:
-      syncDir(gd_client, local[dir]['files'], local[dir]['path'], web[dir], no_resize)
+      syncDir(gd_client, local[dir]['files'], local[dir]['path'], web[dir], no_resize, dry_run)
 
-def syncDir(gd_client, afiles, apath, webAlbum, no_resize):
+def syncDir(gd_client, afiles, apath, webAlbum, no_resize, dry_run):
   webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
   webPhotoDict = {}
   for photo in webPhotos:
     title = photo.title.text
     if title in webPhotoDict:
-      print "duplicate web photo: " + webAlbum.title.text + " " + title
+      print "Duplicate web photo: " + webAlbum.title.text + " " + title
     else:
       webPhotoDict[title] = photo
   report = compareLocalToWebDir(afiles, webPhotoDict)
   localOnly = report['localOnly']
   for f in localOnly:
     localPath = os.path.join(apath, f)
-    upload(gd_client, localPath, webAlbum, f, no_resize)
+    upload(gd_client, localPath, webAlbum, f, no_resize, dry_run)
 
-def uploadDirs(gd_client, dirs, local, no_resize):
+def uploadDirs(gd_client, dirs, local, no_resize, dry_run):
+  ii = 0
   for dir in dirs:
+    ii = ii + 1
+    print "Uploading: {} of {} {}".format( ii, len(dirs), dir )
     alen = len(local[dir]['files'])
     if alen>1000:
       for i in range(0, alen, 1000):
-        uploadDir(gd_client, "%s%s"%(dir,i) if i else dir, local[dir]['files'][i:i+1000], local[dir]['path'], no_resize)
+        uploadDir(gd_client, "%s%s"%(dir,i) if i else dir, local[dir]['files'][i:i+1000], local[dir]['path'], no_resize, dry_run)
     else:
-      uploadDir(gd_client, dir, local[dir]['files'], local[dir]['path'], no_resize)
+      uploadDir(gd_client, dir, local[dir]['files'], local[dir]['path'], no_resize, dry_run)
 
-def uploadDir(gd_client, dir, afiles, apath, no_resize):
-  webAlbum = findOrCreateAlbum(gd_client, dir or "Default")
+def uploadDir(gd_client, dir, afiles, apath, no_resize, dry_run):
+  webAlbum = findOrCreateAlbum(gd_client, dir or "Default", dry_run)
   for f in afiles:
     localPath = os.path.join(apath, f)
-    upload(gd_client, localPath, webAlbum, f, no_resize)
+    upload(gd_client, localPath, webAlbum, f, no_resize, dry_run)
 
 # Global used for a temp directory
 gTempDir = ''
@@ -406,8 +402,11 @@ def shrinkIfNeededByPIL(path, maxDimension):
         return imagePath
     return path
 
-def upload(gd_client, localPath, album, fileName, no_resize):
+def upload(gd_client, localPath, album, fileName, no_resize, dry_run):
     print "Uploading " + localPath
+    if dry_run:
+        return
+
     contentType = getContentType(fileName)
 
     if contentType.startswith('image/'):
@@ -457,6 +456,7 @@ if __name__ == '__main__':
           '--no-resize',
           help="Do not resize images, i.e., upload photos with original size.",
           action='store_true')
+    parser.add_argument('--dry-run', help='take no action, just print steps', action='store_true')
 
     args = parser.parse_args()
 
@@ -478,5 +478,5 @@ if __name__ == '__main__':
     webAlbums = getWebAlbums(gd_client)
     localAlbums = toBaseName(findMedia(args.source))
     albumDiff = compareLocalToWeb(localAlbums, webAlbums)
-    syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums, args.no_resize)
-    uploadDirs(gd_client, albumDiff['localOnly'], localAlbums, args.no_resize)
+    syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums, args.no_resize, args.dry_run)
+    uploadDirs(gd_client, albumDiff['localOnly'], localAlbums, args.no_resize, args.dry_run)
