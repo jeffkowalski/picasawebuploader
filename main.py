@@ -43,6 +43,8 @@ from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTE
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 PICASA_MAX_VIDEO_SIZE_BYTES = 104857600
+PICASA_MAX_PICTURES_PER_ALBUM = 2000
+PICASA_MAX_RET_ENTRY = 1000
 
 try:
     from PIL import Image
@@ -194,10 +196,30 @@ def findOrCreateAlbum(gd_client, title, dry_run):
             delay = delay * 2
 
 def getWebPhotosForAlbum(gd_client, album):
-    photos = gd_client.GetFeed(
-            '/data/feed/api/user/%s/albumid/%s?kind=photo' % (
-            gd_client.email, album.gphoto_id.text))
-    return photos.entry
+    total = int(album.numphotos.text)
+    ret = 0
+    start = 1
+    p = []
+    while start <= total:
+        if total - start + 1 > PICASA_MAX_RET_ENTRY:
+            ret = PICASA_MAX_RET_ENTRY
+        else:
+            ret = total - start + 1
+
+        photos = gd_client.GetFeed(
+                '/data/feed/api/user/%s/albumid/%s?kind=photo&start-index=%d&max-results=%d' % (
+                gd_client.email, album.gphoto_id.text, start, ret))
+
+        start += ret
+        p += photos.entry
+
+    if total != len(p):
+        print ('Only %d photos retrieved from album %s, total %d' %
+            (len(p), album.title.text, total))
+    # else:
+    #     print ('All %d photos retrieved in album %s' % (total, album.title.text))
+
+    return p
 
 allExtensions = {}
 
@@ -239,8 +261,14 @@ def visit(arg, dirname, names):
     mediaFiles = [name for name in names if not name.startswith('.') and isMediaFilename(name) and
         os.path.isfile(os.path.join(dirname, name))]
     count = len(mediaFiles)
-    if count > 0:
+    if count <= 0:
+        print ('No file in directory %s' % dirname)
+    elif count <= PICASA_MAX_PICTURES_PER_ALBUM:
         arg[dirname] = {'files': sorted(mediaFiles)}
+    else:
+        print ('The files(count %d) in directory %s is larger than %d, please split the directory' %
+            (count, dirname, PICASA_MAX_PICTURES_PER_ALBUM))
+        exit()
 
 def findMedia(source):
     hash = {}
@@ -299,18 +327,11 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
     return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
 def syncDirs(gd_client, dirs, local, web, no_resize, dry_run):
-  ii = 0
-  for dir in dirs:
-    ii = ii + 1
-    print "Syncing: {} of {} {}".format( ii, len(dirs), dir )
-    alen = len(local[dir]['files'])
-    if alen>1000:
-      for i in range(0, alen, 1000):
-        wdir = "%s%s"%(dir,i) if i else dir
-        wdir = web.get(wdir, findOrCreateAlbum(gd_client, wdir, dry_run))
-        syncDir(gd_client, local[dir]['files'][i:i+1000], local[dir]['path'], wdir, no_resize, dry_run)
-    else:
-      syncDir(gd_client, local[dir]['files'], local[dir]['path'], web[dir], no_resize, dry_run)
+    ii = 0
+    for dir in dirs:
+        ii = ii + 1
+        print "Syncing: {} of {} {}".format( ii, len(dirs), dir )
+        syncDir(gd_client, local[dir]['files'], local[dir]['path'], web[dir], no_resize, dry_run)
 
 def syncDir(gd_client, afiles, apath, webAlbum, no_resize, dry_run):
   webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
@@ -328,16 +349,11 @@ def syncDir(gd_client, afiles, apath, webAlbum, no_resize, dry_run):
     upload(gd_client, localPath, webAlbum, f, no_resize, dry_run)
 
 def uploadDirs(gd_client, dirs, local, no_resize, dry_run):
-  ii = 0
-  for dir in dirs:
-    ii = ii + 1
-    print "Uploading: {} of {} {}".format( ii, len(dirs), dir )
-    alen = len(local[dir]['files'])
-    if alen>1000:
-      for i in range(0, alen, 1000):
-        uploadDir(gd_client, "%s%s"%(dir,i) if i else dir, local[dir]['files'][i:i+1000], local[dir]['path'], no_resize, dry_run)
-    else:
-      uploadDir(gd_client, dir, local[dir]['files'], local[dir]['path'], no_resize, dry_run)
+    ii = 0
+    for dir in dirs:
+        ii = ii + 1
+        print "Uploading: {} of {} {}".format( ii, len(dirs), dir )
+        uploadDir(gd_client, dir, local[dir]['files'], local[dir]['path'], no_resize, dry_run)
 
 def uploadDir(gd_client, dir, afiles, apath, no_resize, dry_run):
   webAlbum = findOrCreateAlbum(gd_client, dir or "Default", dry_run)

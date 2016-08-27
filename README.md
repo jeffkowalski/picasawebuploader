@@ -5,11 +5,11 @@ A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 
 + Resizes large images to be less than the free limit (2048 x 2048)
 + Uploads all directories under a given directory
-+ restartable
++ Restartable
 + Creates the albums as "protected"
 + Automatically retries when Google data service errors out
-+ Google OAuth 2.0 login
-+ Automatically update the secret data of Google OAuth 2.0
++ Uses Google OAuth 2.0 login
++ Automatically updates the secret data of Google OAuth 2.0
 
 To Do
 -----
@@ -32,6 +32,15 @@ Installation
     + PIL is available on most UNIX like systems.
     + "sips" comes pre-installed on OSX.
   + pyexiv2 module for writing correct EXIF data
+
+Local Directory
+--------------
+
++ The code will recursively lookup all directories under the "source"
++ Each lowest-level directory will be created as album, the album name is the folder name, without the path
++ Don't append the "/" after the "source"
++ Only 2000 pictures per albums may be uploaded
+  + When attempting to upload more than 2000 pictures, an error will be printed and the program will exit
 
 Authentication
 --------------
