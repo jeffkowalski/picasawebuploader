@@ -7,7 +7,9 @@ A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 + Uploads all directories under a given directory
 + restartable
 + Creates the albums as "protected"
-+ Automatically retries when Google data service errors out.
++ Automatically retries when Google data service errors out
++ Google OAuth 2.0 login
++ Automatically update the secret data of Google OAuth 2.0
 
 To Do
 -----
@@ -25,8 +27,9 @@ Installation
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
     + gdata-2.0.16 for Python
+  + Google OAuth2 APIs https://github.com/google/oauth2client.git
   + The PIL library for Python or BSD "sips" image processing program.
-	+ PIL is available on most UNIX like systems.
+    + PIL is available on most UNIX like systems.
     + "sips" comes pre-installed on OSX.
   + pyexiv2 module for writing correct EXIF data
 
