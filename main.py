@@ -439,7 +439,7 @@ def upload(gd_client, localPath, album, fileName, no_resize, dry_run):
         # tested by cpbotha on 2013-05-24
         # this limit still exists
         if size > PICASA_MAX_VIDEO_SIZE_BYTES:
-            print "Video file too big to upload: " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
+            print "## Video file too big to upload: " + str(fileName) + " : " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
             return
         imagePath = localPath
         isImage = False

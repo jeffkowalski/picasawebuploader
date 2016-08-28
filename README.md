@@ -26,8 +26,9 @@ Installation
 + Prerequisites:
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
-    + gdata-2.0.16 for Python
+    pip install gdata
   + Google OAuth2 APIs https://github.com/google/oauth2client.git
+    pip install oauth2client
   + The PIL library for Python or BSD "sips" image processing program.
     + PIL is available on most UNIX like systems.
     + "sips" comes pre-installed on OSX.
