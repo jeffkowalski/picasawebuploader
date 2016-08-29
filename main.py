@@ -226,8 +226,11 @@ allExtensions = {}
 # key: extension, value: type
 knownExtensions = {
     '.png': 'image/png',
+    '.jpe': 'image/jpeg',
     '.jpeg': 'image/jpeg',
     '.jpg': 'image/jpeg',
+    '.tif': 'image/tiff',
+    '.tiff': 'image/tiff',
     '.avi': 'video/avi',
     '.wmv': 'video/wmv',
     '.3gp': 'video/3gp',
@@ -258,16 +261,22 @@ def visit(arg, dirname, names):
     basedirname = os.path.basename(dirname)
     if basedirname.startswith('.'):
         return
-    mediaFiles = [name for name in names if not name.startswith('.') and isMediaFilename(name) and
-        os.path.isfile(os.path.join(dirname, name))]
+    mediaFiles = [name for name in names
+                  if not name.startswith('.') and
+                  isMediaFilename(name) and
+                  os.path.isfile(os.path.join(dirname, name))]
     count = len(mediaFiles)
     if count <= 0:
-        print ('No file in directory %s' % dirname)
+        subdirs = [name for name in names
+                   if not name.startswith('.') and
+                   os.path.isdir(os.path.join(dirname, name))]
+        if len(subdirs) <= 0:
+            print ('No media in directory %s' % dirname)
     elif count <= PICASA_MAX_PICTURES_PER_ALBUM:
         arg[dirname] = {'files': sorted(mediaFiles)}
     else:
-        print ('The files(count %d) in directory %s is larger than %d, please split the directory' %
-            (count, dirname, PICASA_MAX_PICTURES_PER_ALBUM))
+        print ('There are more than %d files(count %d) in directory %s, please split the directory' %
+            (PICASA_MAX_PICTURES_PER_ALBUM, count, dirname))
         exit()
 
 def findMedia(source):
@@ -309,7 +318,10 @@ def compareLocalToWeb(local, web):
             localOnly.append(i)
     for i in web:
         if i not in local:
+            print ('Album is present only on the web: %s' % i)
             webOnly.append(i)
+    print("localDir/webAlbums : {} / {}".format( len(local), len(web)))
+    print("(localonly/both/webonly: {} / {} / {}".format ( len(localOnly), len(both), len(webOnly)))
     return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
 def compareLocalToWebDir(localAlbum, webPhotoDict):
@@ -336,12 +348,22 @@ def syncDirs(gd_client, dirs, local, web, no_resize, dry_run):
 def syncDir(gd_client, afiles, apath, webAlbum, no_resize, dry_run):
   webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
   webPhotoDict = {}
+  duplicated = []
   for photo in webPhotos:
     title = photo.title.text
     if title in webPhotoDict:
       print "Duplicate web photo: " + webAlbum.title.text + " " + title
+      duplicated.append(photo)
     else:
       webPhotoDict[title] = photo
+
+  # delete duplicated photos
+  for photo in duplicated:
+    title = photo.title.text
+    print "Delete duplicate web photo: " + webAlbum.title.text + " " + title
+#    gd_client.Delete(photo)
+
+  # upload local only photos
   report = compareLocalToWebDir(afiles, webPhotoDict)
   localOnly = report['localOnly']
   for f in localOnly:
